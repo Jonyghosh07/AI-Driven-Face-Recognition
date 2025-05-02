@@ -1,0 +1,302 @@
+<odoo>
+    <template id="faceid_login_template">
+        <t t-call="website.layout">
+            <div class="container py-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-8 col-lg-6">
+                        <div class="card shadow">
+                            <div class="card-header bg-primary text-white text-center">
+                                <h3 class="mb-0">Face Recognition Login</h3>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="text-center mb-4">
+                                    <p class="text-muted">Position your face in the center of the camera</p>
+                                    
+                                    <!-- Video container with overlay -->
+                                    <div class="position-relative mx-auto" style="max-width: 360px;">
+                                        <div class="video-container border rounded overflow-hidden shadow-sm" style="position: relative;">
+                                            <video id="video" width="360" height="270" autoplay="true" playsinline="true" style="background-color: #eee;"></video>
+                                            <!-- Face position guide overlay -->
+                                            <div id="face-guide" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                                                <div style="width: 180px; height: 180px; border: 2px dashed rgba(0,123,255,0.5); border-radius: 50%; position: absolute; top: 45px; left: 90px;"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Status indicator -->
+                                        <div class="mt-3 p-2 rounded" id="status-container">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <div class="spinner-border spinner-border-sm mr-2" id="status-spinner"></div>
+                                                <span id="status" class="text-muted">Initializing...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Action buttons -->
+                                <div class="text-center mt-3">
+                                    <button style="padding: 8px;" id="capture" class="btn btn-primary btn-lg px-4">
+                                        <i class="fa fa-camera mr-2"></i> Capture &amp; Login
+                                    </button>
+                                    <div class="mt-3">
+                                        <a href="/web/login" class="btn btn-outline-secondary">
+                                            Back to Login
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-light text-center py-3">
+                                <small class="text-muted">Secure authentication through facial recognition</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Face API CDN -->
+            <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+            
+            <!-- JS Code -->
+            <script>
+                // Main function
+                function startFaceRecognition() {
+                    console.log("Starting face recognition initialization");
+                    
+                    // DOM elements
+                    const video = document.getElementById('video');
+                    const captureButton = document.getElementById('capture');
+                    const statusElement = document.getElementById('status');
+                    const statusSpinner = document.getElementById('status-spinner');
+                    const statusContainer = document.getElementById('status-container');
+                    const faceGuide = document.getElementById('face-guide');
+                    
+                    // Update status function with enhanced visual feedback
+                    function updateStatus(message, type = 'info') {
+                        console.log(message);
+                        statusElement.textContent = message;
+                        
+                        // Clear previous classes
+                        statusContainer.classList.remove('bg-danger', 'bg-success', 'bg-warning', 'bg-info');
+                        
+                        // Show/hide spinner based on state
+                        if (type === 'loading') {
+                            statusSpinner.style.display = 'inline-block';
+                            statusContainer.classList.add('bg-info', 'text-white');
+                        } else {
+                            statusSpinner.style.display = 'none';
+                            
+                            if (type === 'success') {
+                                statusContainer.classList.add('bg-success', 'text-white');
+                            } else if (type === 'error') {
+                                statusContainer.classList.add('bg-danger', 'text-white');
+                            } else if (type === 'warning') {
+                                statusContainer.classList.add('bg-warning');
+                            }
+                        }
+                    }
+                    
+                    // Update face guide position
+                    function updateFaceGuide(detected = false) {
+                        if (detected) {
+                            faceGuide.querySelector('div').style.borderColor = 'rgba(40, 167, 69, 0.7)';
+                        } else {
+                            faceGuide.querySelector('div').style.borderColor = 'rgba(0, 123, 255, 0.5)';
+                        }
+                    }
+                    
+                    // Function to check if camera is available
+                    function isCameraAvailable() {
+                        return !!(navigator &amp;&amp; navigator.mediaDevices &amp;&amp; navigator.mediaDevices.getUserMedia);
+                    }
+                    
+                    // Path to model files
+                    const modelPath = '/face_recognition_login/static/src/models';
+                    
+                    // Load models
+                    updateStatus("Loading face recognition models...", 'loading');
+                    
+                    // Check browser compatibility first
+                    if (!isCameraAvailable()) {
+                        updateStatus("Camera not available. Your browser may not support this feature or needs HTTPS.", 'error');
+                        console.error("MediaDevices API not available");
+                        captureButton.disabled = true;
+                        captureButton.classList.remove('btn-primary');
+                        captureButton.classList.add('btn-secondary');
+                        return;
+                    }
+                    
+                    Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),
+                        faceapi.nets.faceLandmark68Net.loadFromUri(modelPath),
+                        faceapi.nets.faceRecognitionNet.loadFromUri(modelPath)
+                    ]).then(function() {
+                        updateStatus("Models loaded. Starting camera...", 'loading');
+                        
+                        // Start camera with error handling
+                        try {
+                            // Safely access getUserMedia
+                            const getUserMedia = (navigator.mediaDevices &amp;&amp; navigator.mediaDevices.getUserMedia) ? 
+                                navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices) :
+                                function(constraints) {
+                                    return new Promise(function(resolve, reject) {
+                                        updateStatus("Camera access not supported in this browser", 'error');
+                                        reject(new Error('getUserMedia is not implemented in this browser'));
+                                    });
+                                };
+                                
+                            getUserMedia({
+                                video: {
+                                    width: { ideal: 640 },
+                                    height: { ideal: 480 },
+                                    facingMode: "user"
+                                }
+                            }).then(function(stream) {
+                                video.srcObject = stream;
+                                
+                                // Make sure video plays
+                                video.onloadedmetadata = function() {
+                                    try {
+                                        video.play();
+                                        console.log("Video is playing");
+                                    } catch (e) {
+                                        console.error("Error playing video:", e);
+                                    }
+                                };
+                                
+                                updateStatus("Camera ready. Position your face in the circle", 'info');
+                                
+                                // Set up face detection interval for feedback
+                                const detectionInterval = setInterval(function() {
+                                    if (video.readyState >= 2 &amp;&amp; !video.paused) {
+                                        faceapi.detectSingleFace(
+                                            video, 
+                                            new faceapi.TinyFaceDetectorOptions({
+                                                inputSize: 320,
+                                                scoreThreshold: 0.5
+                                            })
+                                        ).then(function(result) {
+                                            if (result) {
+                                                updateStatus("Face detected! Click Capture when ready.", 'success');
+                                                updateFaceGuide(true);
+                                                captureButton.disabled = false;
+                                                captureButton.classList.remove('btn-secondary');
+                                                captureButton.classList.add('btn-primary');
+                                            } else {
+                                                updateStatus("No face detected. Please center your face in the circle.", 'warning');
+                                                updateFaceGuide(false);
+                                                captureButton.disabled = true;
+                                                captureButton.classList.remove('btn-primary');
+                                                captureButton.classList.add('btn-secondary');
+                                            }
+                                        }).catch(function(err) {
+                                            console.error("Error in face detection:", err);
+                                        });
+                                    }
+                                }, 1000);
+                                
+                            }).catch(function(err) {
+                                console.error("Camera access denied:", err);
+                                updateStatus("Camera access denied: " + (err.message || "Permission not granted"), 'error');
+                                captureButton.disabled = true;
+                            });
+                            
+                        } catch (err) {
+                            console.error("Camera initialization error:", err);
+                            updateStatus("Camera error: " + err.message, 'error');
+                            captureButton.disabled = true;
+                        }
+                        
+                        // Set up capture button
+                        captureButton.addEventListener("click", function() {
+                            if (!video.srcObject || video.paused) {
+                                updateStatus("Camera not ready. Please refresh the page.", 'error');
+                                return;
+                            }
+                            
+                            updateStatus("Capturing and analyzing face...", 'loading');
+                            
+                            // Detect face with more sensitive parameters
+                            faceapi.detectSingleFace(
+                                video, 
+                                new faceapi.TinyFaceDetectorOptions({
+                                    inputSize: 416,
+                                    scoreThreshold: 0.3
+                                })
+                            ).withFaceLandmarks().withFaceDescriptor().then(function(detection) {
+                                console.log("Face detection completed");
+                                
+                                if (!detection) {
+                                    updateStatus("No face detected. Please center your face and try again.", 'warning');
+                                    return;
+                                }
+                                
+                                updateStatus("Face detected! Verifying...", 'loading');
+                                const descriptor = detection.descriptor;
+                                console.log("Face descriptor:-------------", descriptor);
+                                // Send descriptor to backend
+                                fetch("/web/faceid/verify", {
+                                    method: "POST",
+                                    headers: { 
+                                        "Content-Type": "application/json",
+                                        "X-Requested-With": "XMLHttpRequest"
+                                    },
+                                    body: JSON.stringify({
+                                        jsonrpc: "2.0",
+                                        id: Math.floor(Math.random() * 1000000),
+                                        params: {
+                                            descriptor: Array.from(descriptor)
+                                        }
+                                    }),
+                                }).then(function(response) {
+                                    return response.json();
+                                }).then(function(data) {
+                                    console.log("Response data:", data);
+                                    
+                                    if (data.result &amp;&amp; data.result.success) {
+                                        updateStatus("Face recognized! Redirecting...", 'success');
+                                        
+                                        // Add animation effect
+                                        document.body.insertAdjacentHTML('beforeend', 
+                                            '<div id="login-success-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(40, 167, 69, 0.2); z-index: 9999; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s;">' +
+                                            '<div style="background-color: white; border-radius: 100px; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 30px rgba(0,0,0,0.2);">' +
+                                            '<i class="fa fa-check" style="font-size: 60px; color: #28a745;"></i></div></div>'
+                                        );
+                                        
+                                        setTimeout(function() {
+                                            window.location.href = "/web";
+                                        }, 1000);
+                                    } else {
+                                        updateStatus("Face not recognized. Please try again.", 'error');
+                                    }
+                                }).catch(function(err) {
+                                    updateStatus("Error verifying face: " + (err.message || "Unknown error"), 'error');
+                                    console.error("Verification error:", err);
+                                });
+                                
+                            }).catch(function(err) {
+                                updateStatus("Error during face detection: " + (err.message || "Unknown error"), 'error');
+                                console.error("Detection error:", err);
+                            });
+                        });
+                        
+                    }).catch(function(err) {
+                        updateStatus("Error loading models: " + (err.message || "Unknown error"), 'error');
+                        console.error("Model loading error:", err);
+                        captureButton.disabled = true;
+                    });
+                    
+                    // Initially disable capture button until face is detected
+                    captureButton.disabled = true;
+                    captureButton.classList.remove('btn-primary');
+                    captureButton.classList.add('btn-secondary');
+                }
+                
+                // Start when DOM is ready
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', startFaceRecognition);
+                } else {
+                    startFaceRecognition();
+                }
+            </script>
+        </t>
+    </template>
+</odoo>

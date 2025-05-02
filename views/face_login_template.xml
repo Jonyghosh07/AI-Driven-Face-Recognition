@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="auth_login_inherit" inherit_id="auth_signup.login">
+        <xpath expr="//div[hasclass('oe_login_buttons')]" position="after">
+            <div class="mt-3 text-center">
+                <a class="btn btn-primary" href="/web/faceid/login">Face ID</a>
+            </div>
+        </xpath>
+    </template>
+</odoo>

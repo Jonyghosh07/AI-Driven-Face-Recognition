@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Face Recognition Model Definition -->
+    <record id="view_users_face_list" model="ir.ui.view">
+        <field name="name">res.users.face.list</field>
+        <field name="model">res.users.face</field>
+        <field name="arch" type="xml">
+            <list string="Face Recognition Data">
+                <field name="user_id"/>
+                <field name="active"/>
+                <field name="last_updated"/>
+            </list>
+        </field>
+    </record>
+    
+    <record id="view_users_face_form" model="ir.ui.view">
+        <field name="name">res.users.face.form</field>
+        <field name="model">res.users.face</field>
+        <field name="arch" type="xml">
+            <form string="Face Recognition Data">
+                <sheet>
+                    <group>
+                        <field name="user_id"/>
+                        <field name="active"/>
+                        <field name="last_updated"/>
+                        <field name="face_descriptor" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- User Form Inheritance -->
+    <record id="view_users_form_face_recognition" model="ir.ui.view">
+        <field name="name">res.users.form.face.recognition</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <notebook position="inside">
+                <page string="Face Recognition" groups="base.group_system">
+                    <group>
+                        <button string="Generate Face Descriptor" 
+                                type="object" 
+                                name="generate_face_descriptor" 
+                                class="btn-primary"
+                                invisible="[('image_1920', '=', False)]"/>
+                        <div invisible="[('image_1920', '!=', False)]">
+                            <p>Upload a profile picture first to enable face recognition.</p>
+                        </div>
+                    </group>
+                    <field name="face_recognition_data">
+                        <list>
+                            <field name="active"/>
+                            <field name="last_updated"/>
+                        </list>
+                    </field>
+                </page>
+            </notebook>
+        </field>
+    </record>
+    
+    <!-- Menu and action -->
+    <record id="action_face_recognition_data" model="ir.actions.act_window">
+        <field name="name">Face Recognition Data</field>
+        <field name="res_model">res.users.face</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    
+    <menuitem id="menu_face_recognition" 
+              name="Face Recognition" 
+              parent="base.menu_administration" 
+              groups="base.group_system" 
+              sequence="100"/>
+              
+    <menuitem id="menu_face_recognition_data" 
+              name="Face Data" 
+              parent="menu_face_recognition" 
+              action="action_face_recognition_data" 
+              sequence="10"/>
+</odoo>
