@@ -10,7 +10,7 @@
         - Face authentication during login
         - Fallback to password authentication
     """,
-    'author': 'Metamorphosis Ltd',
+    'author': 'Jony Ghosh',
     'website': 'https://metamoprphosis.com.bd',
     'depends': ['base', 'web', 'auth_signup'],
     'data': [
