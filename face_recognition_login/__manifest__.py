@@ -1,5 +1,5 @@
 {
-    'name': 'Face Recognition Authentication',
+    'name': 'AI Driven Face Recognition Login',
     'version': '1.0',
     'category': 'Extra Tools',
     'summary': 'Authenticate users with facial recognition',
