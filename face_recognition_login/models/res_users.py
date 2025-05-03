@@ -7,7 +7,7 @@ import numpy as np
 from scipy.spatial.distance import cosine
 import logging
 import json
-
+from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 try:
@@ -27,6 +27,17 @@ class ResUsersFace(models.Model):
     face_descriptor = fields.Text(string='Face Descriptor', help='JSON encoded face descriptor array')
     active = fields.Boolean(default=True)
     last_updated = fields.Datetime(string='Last Updated', default=fields.Datetime.now)
+    
+    
+    @api.model
+    def create(self, vals):
+        """Override create to generate face descriptor after user creation"""
+        record = super(ResUsersFace, self).create(vals)
+        if record.user_id and record.user_id.image_1920:
+            record.generate_face_descriptor(record.user_id.id)
+        else:
+            raise UserError("User does not have an image to generate descriptor")
+        return record
     
     @api.model
     def generate_face_descriptor(self, user_id):
