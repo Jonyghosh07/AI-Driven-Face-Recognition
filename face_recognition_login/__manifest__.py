@@ -14,7 +14,6 @@
         - Fallback to password authentication
     """,
     'author': 'Jony Ghosh',
-    'website': 'https://metamoprphosis.com.bd',
     'depends': ['base', 'web', 'auth_signup'],
     'data': [
         'security/ir.model.access.csv',
