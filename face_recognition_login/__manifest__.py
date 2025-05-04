@@ -4,6 +4,9 @@
     'category': 'Extra Tools',
     'summary': 'Authenticate users with facial recognition',
     'description': """
+        # pip install Pillow numpy scipy
+        # apt-get install cmake
+        # pip install face_recognition
         This module adds facial recognition capabilities to Odoo login.
         Features:
         - Face enrollment for users
@@ -11,7 +14,6 @@
         - Fallback to password authentication
     """,
     'author': 'Jony Ghosh',
-    'website': 'https://metamoprphosis.com.bd',
     'depends': ['base', 'web', 'auth_signup'],
     'data': [
         'security/ir.model.access.csv',
@@ -26,6 +28,7 @@
             ],
         },
     },
+    
     'images': ['static/description/icon.png'],
     'application': False,
     'price': 125.00,
