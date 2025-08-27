@@ -31,7 +31,7 @@
     
     'images': ['static/description/icon.png'],
     'application': False,
-    'price': 125.00,
+    'price': 25.00,
     'currency':'EUR',
     'installable': True,
     'auto_install': False,
